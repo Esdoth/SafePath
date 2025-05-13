@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">SafePath</string>
+    <string name="title_home">Home</string>
+    <string name="title_mis_puntos">Mis puntos</string>
+    <string name="title_cuenta">Cuenta</string>
+    <string name="search_hint">Buscar ubicación</string>
+</resources>
