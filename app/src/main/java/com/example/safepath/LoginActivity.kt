@@ -2,13 +2,18 @@ package com.example.safepath
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.widget.TextView // Import necesario para TextView
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.lifecycleScope
+import com.example.safepath.auth.CognitoAuthManager
 import com.example.safepath.databinding.ActivityLoginBinding
 import android.widget.Toast // Importa la clase Toast si quieres usarla
 import com.google.firebase.auth.FirebaseAuth
@@ -17,11 +22,14 @@ import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 
+
 class LoginActivity : AppCompatActivity() {
 
     private lateinit var auth: FirebaseAuth
 
     private lateinit var binding: ActivityLoginBinding
+    private lateinit var authManager: CognitoAuthManager
+    private lateinit var authLauncher: ActivityResultLauncher<Intent>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,29 +46,41 @@ class LoginActivity : AppCompatActivity() {
             insets
         }
 
-        // Verificar si el usuario ya ha iniciado sesión (comentado para forzar login)
-        /*
-        val sharedPreferences = getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE)
-        val authToken = sharedPreferences.getString("authToken", null)
+        // Inicializar AuthManager
+        authManager = CognitoAuthManager(this)
 
-        if (authToken != null) {
-            val intent = Intent(this, MainActivity::class.java)
-            startActivity(intent)
-            finish()
-            return
+        authLauncher = registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) { result ->
+            result.data?.let { intent ->
+                handleAuthResult(intent)
+            } ?: run {
+                binding.textViewError.text = "Error: No se recibieron datos de autenticación"
+            }
         }
-        */
+
+        lifecycleScope.launch {
+            authManager.initialize()
+
+            // Verificar si ya está autenticado
+            if (authManager.authState.value.isAuthenticated) {
+                navigateToMainActivity()
+            }
+        }
 
         binding.buttonLogin.setOnClickListener {
             val email = binding.editTextEmailAddress.text.toString()
             val password = binding.editTextPassword.text.toString()
-            attemptLogin(email, password)
+
+            if (email.isNotEmpty() && password.isNotEmpty()) {
+                attemptLoginWithCognito(email, password)
+            } else {
+                binding.textViewError.text = "Por favor ingresa email y contraseña"
+            }
         }
 
-        // Hacer el TextView de registro clickable
         binding.textViewRegistro.isClickable = true
         binding.textViewRegistro.setOnClickListener {
-            // Crear un Intent para iniciar la actividad de registro
             val intent = Intent(this, RegistroActivity::class.java)
             startActivity(intent)
         }
