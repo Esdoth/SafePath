@@ -4,9 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.util.Log
-import android.widget.TextView
-import android.widget.Toast
+import android.view.View
+import android.widget.TextView // Import necesario para TextView
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
@@ -16,11 +15,17 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import com.example.safepath.auth.CognitoAuthManager
 import com.example.safepath.databinding.ActivityLoginBinding
-import kotlinx.coroutines.launch
-import net.openid.appauth.AuthorizationException
-import net.openid.appauth.AuthorizationResponse
+import android.widget.Toast // Importa la clase Toast si quieres usarla
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.auth.FirebaseAuthInvalidUserException
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.ktx.Firebase
+
 
 class LoginActivity : AppCompatActivity() {
+
+    private lateinit var auth: FirebaseAuth
 
     private lateinit var binding: ActivityLoginBinding
     private lateinit var authManager: CognitoAuthManager
@@ -31,6 +36,10 @@ class LoginActivity : AppCompatActivity() {
         enableEdgeToEdge()
         binding = ActivityLoginBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        // Inicializa Firebase Auth
+        auth = Firebase.auth
+
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
@@ -77,65 +86,61 @@ class LoginActivity : AppCompatActivity() {
         }
     }
 
-    private fun attemptLoginWithCognito(email: String, password: String) {
-        // Aquí puedes implementar el flujo de autenticación con Cognito
-        // Por ahora, usaremos el flujo OAuth con AppAuth
-        startAuthFlow()
-    }
-
-    private fun startAuthFlow() {
-        lifecycleScope.launch {
-            try {
-                val authRequest = authManager.getAuthorizationRequest()
-                val authIntent = authManager.authService.getAuthorizationRequestIntent(authRequest)
-                authLauncher.launch(authIntent)
-            } catch (ex: Exception) {
-                binding.textViewError.text = "Error al iniciar autenticación: ${ex.message}"
-            }
+    private fun attemptLogin(email: String, password: String) {
+        // Validación básica de campos
+        if (email.isEmpty() || password.isEmpty()) {
+            Toast.makeText(this, "Por favor ingresa email y contraseña", Toast.LENGTH_SHORT).show()
+            return
         }
-    }
 
-    private fun handleAuthResult(data: Intent) {  // Ahora recibe un Intent no-nulo
-        try {
-            val response = AuthorizationResponse.fromIntent(data)
-            val exception = AuthorizationException.fromIntent(data)
+        // Obtener instancia de Firebase Auth
+        val auth = Firebase.auth
 
-            when {
-                exception != null -> {
-                    binding.textViewError.text = "Error de autenticación: ${exception.errorDescription}"
-                    Log.e("Auth", "AuthorizationException", exception)
-                }
-                response != null -> {
-                    lifecycleScope.launch {
-                        val state = authManager.handleAuthorizationResponse(response)
-                        if (state.isAuthenticated) {
-                            navigateToMainActivity()
-                        } else {
-                            val errorMsg = state.error ?: "Error desconocido durante la autenticación"
-                            binding.textViewError.text = errorMsg
-                            Log.e("Auth", errorMsg)
-                        }
+        // Mostrar progreso (si tienes un ProgressBar en tu layout con este ID)
+        binding.progressBar?.visibility = View.VISIBLE
+
+        auth.signInWithEmailAndPassword(email, password)
+            .addOnCompleteListener(this) { task ->
+                // Ocultar progreso
+                binding.progressBar?.visibility = View.GONE
+
+                if (task.isSuccessful) {
+                    // Login exitoso
+                    val intent = Intent(this, MainActivity::class.java)
+                    startActivity(intent)
+                    finish() // Cierra la Activity de login
+                } else {
+                    // Mostrar error
+                    val errorMessage = when {
+                        task.exception is FirebaseAuthInvalidUserException -> "Usuario no registrado"
+                        task.exception is FirebaseAuthInvalidCredentialsException -> "Credenciales incorrectas"
+                        else -> "Error al iniciar sesión: ${task.exception?.message}"
                     }
-                }
-                else -> {
-                    binding.textViewError.text = "Respuesta de autenticación inválida"
-                    Log.e("Auth", "Both response and exception were null")
+                    Toast.makeText(this, errorMessage, Toast.LENGTH_LONG).show()
                 }
             }
-        } catch (ex: Exception) {
-            binding.textViewError.text = "Error procesando respuesta: ${ex.message}"
-            Log.e("Auth", "Exception in handleAuthResult", ex)
-        }
     }
 
     private fun navigateToMainActivity() {
         val intent = Intent(this, MainActivity::class.java)
         startActivity(intent)
-        finish()
+        finish() // Cierra la Activity de login para que no se pueda volver atrás
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        authManager.dispose()
+    private fun saveLoginState() {
+        val sharedPreferences = getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE)
+        with(sharedPreferences.edit()) {
+            putBoolean("isLoggedIn", true)
+            apply()
+        }
+    }
+
+    private fun simulateLoginFailure() {
+        // Aquí puedes implementar el comportamiento que desees para un fallo de login
+        Toast.makeText(this, "Simulando fallo de inicio de sesión", Toast.LENGTH_LONG).show()
+        // Opcionalmente, podrías limpiar los campos de email y contraseña:
+        binding.editTextEmailAddress.text.clear()
+        binding.editTextPassword.text.clear()
+        // O mostrar un mensaje en un TextView si lo agregas al layout.
     }
 }
