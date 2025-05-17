@@ -2,18 +2,29 @@ package com.example.safepath
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
-import android.widget.TextView // Import necesario para TextView
+import android.util.Log
+import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.lifecycleScope
+import com.example.safepath.auth.CognitoAuthManager
 import com.example.safepath.databinding.ActivityLoginBinding
-import android.widget.Toast // Importa la clase Toast si quieres usarla
+import kotlinx.coroutines.launch
+import net.openid.appauth.AuthorizationException
+import net.openid.appauth.AuthorizationResponse
 
 class LoginActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityLoginBinding
+    private lateinit var authManager: CognitoAuthManager
+    private lateinit var authLauncher: ActivityResultLauncher<Intent>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -26,57 +37,105 @@ class LoginActivity : AppCompatActivity() {
             insets
         }
 
-        // Verificar si el usuario ya ha iniciado sesión (comentado para forzar login)
-        /*
-        val sharedPreferences = getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE)
-        val authToken = sharedPreferences.getString("authToken", null)
+        // Inicializar AuthManager
+        authManager = CognitoAuthManager(this)
 
-        if (authToken != null) {
-            val intent = Intent(this, MainActivity::class.java)
-            startActivity(intent)
-            finish()
-            return
+        authLauncher = registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) { result ->
+            result.data?.let { intent ->
+                handleAuthResult(intent)
+            } ?: run {
+                binding.textViewError.text = "Error: No se recibieron datos de autenticación"
+            }
         }
-        */
+
+        lifecycleScope.launch {
+            authManager.initialize()
+
+            // Verificar si ya está autenticado
+            if (authManager.authState.value.isAuthenticated) {
+                navigateToMainActivity()
+            }
+        }
 
         binding.buttonLogin.setOnClickListener {
             val email = binding.editTextEmailAddress.text.toString()
             val password = binding.editTextPassword.text.toString()
-            attemptLogin(email, password)
+
+            if (email.isNotEmpty() && password.isNotEmpty()) {
+                attemptLoginWithCognito(email, password)
+            } else {
+                binding.textViewError.text = "Por favor ingresa email y contraseña"
+            }
         }
 
-        // Hacer el TextView de registro clickable
         binding.textViewRegistro.isClickable = true
         binding.textViewRegistro.setOnClickListener {
-            // Crear un Intent para iniciar la actividad de registro
             val intent = Intent(this, RegistroActivity::class.java)
             startActivity(intent)
         }
     }
 
-    private fun attemptLogin(email: String, password: String) {
-        // Simulación de inicio de sesión exitoso
-        if (email == "test@example.com" && password == "password") {
-            val sharedPreferences = getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE)
-            // sharedPreferences.edit().putString("authToken", "fake_token").apply() // Comentado para forzar login
-            val intent = Intent(this, MainActivity::class.java)
-            startActivity(intent)
-            finish()
-        } else {
-            // Mostrar mensaje de error de inicio de sesión fallido en el TextView
-            binding.textViewError.text = "Credenciales incorrectas"
-            // Opcionalmente, podrías limpiar los campos si lo deseas:
-            // binding.editTextEmailAddress.text.clear()
-            // binding.editTextPassword.text.clear()
+    private fun attemptLoginWithCognito(email: String, password: String) {
+        // Aquí puedes implementar el flujo de autenticación con Cognito
+        // Por ahora, usaremos el flujo OAuth con AppAuth
+        startAuthFlow()
+    }
+
+    private fun startAuthFlow() {
+        lifecycleScope.launch {
+            try {
+                val authRequest = authManager.getAuthorizationRequest()
+                val authIntent = authManager.authService.getAuthorizationRequestIntent(authRequest)
+                authLauncher.launch(authIntent)
+            } catch (ex: Exception) {
+                binding.textViewError.text = "Error al iniciar autenticación: ${ex.message}"
+            }
         }
     }
 
-    private fun simulateLoginFailure() {
-        // Aquí puedes implementar el comportamiento que desees para un fallo de login
-        Toast.makeText(this, "Simulando fallo de inicio de sesión", Toast.LENGTH_LONG).show()
-        // Opcionalmente, podrías limpiar los campos de email y contraseña:
-        // binding.editTextEmailAddress.text.clear()
-        // binding.editTextPassword.text.clear()
-        // O mostrar un mensaje en un TextView si lo agregas al layout.
+    private fun handleAuthResult(data: Intent) {  // Ahora recibe un Intent no-nulo
+        try {
+            val response = AuthorizationResponse.fromIntent(data)
+            val exception = AuthorizationException.fromIntent(data)
+
+            when {
+                exception != null -> {
+                    binding.textViewError.text = "Error de autenticación: ${exception.errorDescription}"
+                    Log.e("Auth", "AuthorizationException", exception)
+                }
+                response != null -> {
+                    lifecycleScope.launch {
+                        val state = authManager.handleAuthorizationResponse(response)
+                        if (state.isAuthenticated) {
+                            navigateToMainActivity()
+                        } else {
+                            val errorMsg = state.error ?: "Error desconocido durante la autenticación"
+                            binding.textViewError.text = errorMsg
+                            Log.e("Auth", errorMsg)
+                        }
+                    }
+                }
+                else -> {
+                    binding.textViewError.text = "Respuesta de autenticación inválida"
+                    Log.e("Auth", "Both response and exception were null")
+                }
+            }
+        } catch (ex: Exception) {
+            binding.textViewError.text = "Error procesando respuesta: ${ex.message}"
+            Log.e("Auth", "Exception in handleAuthResult", ex)
+        }
+    }
+
+    private fun navigateToMainActivity() {
+        val intent = Intent(this, MainActivity::class.java)
+        startActivity(intent)
+        finish()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        authManager.dispose()
     }
 }
