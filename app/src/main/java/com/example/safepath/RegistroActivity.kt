@@ -2,27 +2,17 @@ package com.example.safepath
 
 import android.content.Intent
 import android.os.Bundle
-
 import android.view.View
-
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.lifecycle.lifecycleScope
-import com.amazonaws.mobileconnectors.cognitoidentityprovider.CognitoUserAttributes
-import com.amazonaws.mobileconnectors.cognitoidentityprovider.CognitoUser
-import com.amazonaws.mobileconnectors.cognitoidentityprovider.handlers.GenericHandler
-import com.amazonaws.mobileconnectors.cognitoidentityprovider.CognitoUserCodeDeliveryDetails
-import com.example.safepath.auth.CognitoHelper
 import com.example.safepath.databinding.ActivityRegistroBinding
-
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
-
 
 class RegistroActivity : AppCompatActivity() {
 
@@ -31,7 +21,7 @@ class RegistroActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        enableEdgeToEdge() // Habilitar edge-to-edge
         binding = ActivityRegistroBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -51,31 +41,10 @@ class RegistroActivity : AppCompatActivity() {
 
         // Configurar el texto para ir a Login
         binding.textView4.isClickable = true
-
         binding.textView4.setOnClickListener {
-            navigateToLogin()
-        }
-    }
-
-    private fun registerUser() {
-        val username = binding.editTextName.text.toString().trim()
-        val email = binding.editTextTextEmailAddress.text.toString().trim()
-        val password = binding.editTextTextPassword.text.toString().trim()
-
-        if (validateInputs(username, email, password)) {
-            lifecycleScope.launch {
-                try {
-                    signUpWithCognito(username, email, password)
-                } catch (e: Exception) {
-                    runOnUiThread {
-                        Toast.makeText(
-                            this@RegistroActivity,
-                            "Error en registro: ${e.message}",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
-                }
-            }
+            val intent = Intent(this, LoginActivity::class.java)
+            startActivity(intent)
+            finish()
         }
     }
 
@@ -111,6 +80,5 @@ class RegistroActivity : AppCompatActivity() {
                     Toast.makeText(this, errorMessage, Toast.LENGTH_LONG).show()
                 }
             }
-
     }
 }
