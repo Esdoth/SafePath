@@ -2,30 +2,31 @@ package com.example.safepath
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.View
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.lifecycle.lifecycleScope
-import com.amazonaws.mobileconnectors.cognitoidentityprovider.CognitoUserAttributes
-import com.amazonaws.mobileconnectors.cognitoidentityprovider.CognitoUser
-import com.amazonaws.mobileconnectors.cognitoidentityprovider.handlers.GenericHandler
-import com.amazonaws.mobileconnectors.cognitoidentityprovider.CognitoUserCodeDeliveryDetails
-import com.example.safepath.auth.CognitoHelper
 import com.example.safepath.databinding.ActivityRegistroBinding
-import kotlinx.coroutines.launch
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthUserCollisionException
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.ktx.Firebase
 
 class RegistroActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityRegistroBinding
-    private lateinit var cognitoHelper: CognitoHelper
+    private lateinit var auth: FirebaseAuth
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        enableEdgeToEdge() // Habilitar edge-to-edge
         binding = ActivityRegistroBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        // Inicializar Firebase Auth
+        auth = Firebase.auth
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -33,122 +34,51 @@ class RegistroActivity : AppCompatActivity() {
             WindowInsetsCompat.CONSUMED
         }
 
-        // Inicializar Cognito Helper
-        cognitoHelper = CognitoHelper(this)
-
         // Configurar el botón de registro
         binding.button.setOnClickListener {
-            registerUser()
+            registrarUsuario()
         }
 
         // Configurar el texto para ir a Login
+        binding.textView4.isClickable = true
         binding.textView4.setOnClickListener {
-            navigateToLogin()
+            val intent = Intent(this, LoginActivity::class.java)
+            startActivity(intent)
+            finish()
         }
     }
 
-    private fun registerUser() {
-        val username = binding.editTextName.text.toString().trim()
+    private fun registrarUsuario() {
         val email = binding.editTextTextEmailAddress.text.toString().trim()
         val password = binding.editTextTextPassword.text.toString().trim()
 
-        if (validateInputs(username, email, password)) {
-            lifecycleScope.launch {
-                try {
-                    signUpWithCognito(username, email, password)
-                } catch (e: Exception) {
-                    runOnUiThread {
-                        Toast.makeText(
-                            this@RegistroActivity,
-                            "Error en registro: ${e.message}",
-                            Toast.LENGTH_LONG
-                        ).show()
+        if (password.length < 6) {
+            Toast.makeText(this, "La contraseña debe tener al menos 6 caracteres", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Mostrar progreso (asegúrate de tener un ProgressBar con este ID en tu layout)
+        binding.progressBar.visibility = View.VISIBLE
+
+        // Crear usuario con Firebase Auth
+        auth.createUserWithEmailAndPassword(email, password)
+            .addOnCompleteListener(this) { task ->
+                binding.progressBar.visibility = View.GONE
+
+                if (task.isSuccessful) {
+                    // Registro exitoso
+                    Toast.makeText(this, "Registro exitoso", Toast.LENGTH_SHORT).show()
+                    val intent = Intent(this, MainActivity::class.java)
+                    startActivity(intent)
+                    finish()
+                } else {
+                    // Manejar errores específicos
+                    val errorMessage = when (task.exception) {
+                        is FirebaseAuthUserCollisionException -> "El email ya está registrado"
+                        else -> "Error al registrar: ${task.exception?.message}"
                     }
+                    Toast.makeText(this, errorMessage, Toast.LENGTH_LONG).show()
                 }
             }
-        }
-    }
-
-    private fun validateInputs(username: String, email: String, password: String): Boolean {
-        if (username.isEmpty()) {
-            binding.editTextName.error = "Nombre de usuario requerido"
-            return false
-        }
-
-        if (email.isEmpty()) {
-            binding.editTextTextEmailAddress.error = "Email requerido"
-            return false
-        }
-
-        if (password.isEmpty() || password.length < 8) {
-            binding.editTextTextPassword.error = "La contraseña debe tener al menos 8 caracteres"
-            return false
-        }
-
-        return true
-    }
-
-    private fun signUpWithCognito(username: String, email: String, password: String) {
-        val userAttributes = CognitoUserAttributes().apply {
-            addAttribute("email", email)
-        }
-
-        cognitoHelper.userPool.signUp(
-            username,
-            password,
-            userAttributes,
-            null,
-            object : com.amazonaws.mobileconnectors.cognitoidentityprovider.handlers.SignUpHandler {
-                override fun onSuccess(
-                    user: CognitoUser?,
-                    signUpConfirmationState: Boolean,
-                    cognitoUserCodeDeliveryDetails: CognitoUserCodeDeliveryDetails?
-                ) {
-                    runOnUiThread {
-                        if (signUpConfirmationState) {
-                            // Usuario confirmado automáticamente (poco común)
-                            Toast.makeText(
-                                this@RegistroActivity,
-                                "Registro exitoso. Ya puedes iniciar sesión.",
-                                Toast.LENGTH_LONG
-                            ).show()
-                            navigateToLogin()
-                        } else {
-                            // Se requiere confirmación
-                            Toast.makeText(
-                                this@RegistroActivity,
-                                "Registro exitoso. Por favor verifica tu email.",
-                                Toast.LENGTH_LONG
-                            ).show()
-                            navigateToVerification(username)
-                        }
-                    }
-                }
-
-                override fun onFailure(exception: Exception?) {
-                    runOnUiThread {
-                        Toast.makeText(
-                            this@RegistroActivity,
-                            "Error en registro: ${exception?.message}",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
-                }
-            }
-        )
-    }
-
-    private fun navigateToVerification(username: String) {
-        val intent = Intent(this, VerificationActivity::class.java).apply {
-            putExtra("username", username)
-        }
-        startActivity(intent)
-        finish()
-    }
-
-    private fun navigateToLogin() {
-        val intent = Intent(this, LoginActivity::class.java)
-        startActivity(intent)
-        finish()
     }
 }
