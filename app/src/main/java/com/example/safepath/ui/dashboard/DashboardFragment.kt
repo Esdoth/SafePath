@@ -6,16 +6,15 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import com.example.safepath.databinding.FragmentMisPuntosBinding
+import com.example.safepath.ui.componentes.LocationCard
 
 class DashboardFragment : Fragment() {
-
     private var _binding: FragmentMisPuntosBinding? = null
-
-    // This property is only valid between onCreateView and
-    // onDestroyView.
     private val binding get() = _binding!!
 
     override fun onCreateView(
@@ -23,22 +22,23 @@ class DashboardFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        val dashboardViewModel =
-            ViewModelProvider(this).get(DashboardViewModel::class.java)
-
         _binding = FragmentMisPuntosBinding.inflate(inflater, container, false)
-        val root: View = binding.root
-
-        val textView: TextView = binding.textDashboard
-        dashboardViewModel.text.observe(viewLifecycleOwner) {
-            textView.text = it
-        }
-        return root
+        return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        // Aquí puedes realizar cualquier inicialización adicional de la vista
+
+        binding.composeView.apply {
+            setContent {
+                MaterialTheme {
+                    LocationCard(
+                        latitude = 19.4326,  // Ejemplo: CDMX
+                        longitude = -99.1332
+                    )
+                }
+            }
+        }
     }
 
     override fun onDestroyView() {

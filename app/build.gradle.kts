@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     id("com.google.gms.google-services")
+    alias(libs.plugins.compose.compiler) apply true
 }
 
 android {
@@ -22,6 +23,7 @@ android {
         )
     }
 
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -40,11 +42,26 @@ android {
     }
     buildFeatures {
         viewBinding = true
+        compose = true
+    }
+
+    composeOptions {
+         kotlinCompilerExtensionVersion =  "1.5.3"
     }
 
 }
 
+
 dependencies {
+    //COMPOSE
+    val composeBom = platform("androidx.compose:compose-bom:2025.05.00")
+    implementation(composeBom)
+    androidTestImplementation(composeBom)
+    implementation ("androidx.compose.ui:ui:1.5.4")
+    implementation ("androidx.compose.material3:material3:1.1.2")
+    implementation ("androidx.compose.ui:ui-tooling-preview:1.5.4")
+    implementation ("androidx.activity:activity-compose:1.7.2" ) // Para usar Compose en Activity
+    debugImplementation ("androidx.compose.ui:ui-tooling:1.5.4")  // Preview en Android Studio
     // FIREBASE
     implementation(platform("com.google.firebase:firebase-bom:33.13.0"))
     implementation ("com.google.firebase:firebase-auth-ktx")
