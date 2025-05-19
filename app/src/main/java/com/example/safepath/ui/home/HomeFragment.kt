@@ -25,6 +25,12 @@ import com.google.android.libraries.places.api.model.Place
 import com.google.android.libraries.places.widget.Autocomplete
 import com.google.android.libraries.places.widget.AutocompleteActivity
 import com.google.android.libraries.places.widget.model.AutocompleteActivityMode
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.GeoPoint
+import com.google.android.gms.maps.model.Marker
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 
 class HomeFragment : Fragment(), OnMapReadyCallback {
 
@@ -36,6 +42,8 @@ class HomeFragment : Fragment(), OnMapReadyCallback {
     private lateinit var placesClient: com.google.android.libraries.places.api.net.PlacesClient
     private var pendingLocationUpdate: Pair<LatLng, String?>? = null
     private var statusBarHeight = 0
+    private val firestore = FirebaseFirestore.getInstance()
+    private val markers = mutableListOf<Marker>()
 
     private val autocompleteLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -168,10 +176,61 @@ class HomeFragment : Fragment(), OnMapReadyCallback {
         val defaultLocation = LatLng(20.704657028467377, -100.44353167532229)
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(defaultLocation, 12f))
 
+        // Cargar puntos de Firestore
+        loadPointsFromFirestore()
+
         pendingLocationUpdate?.let { (latLng, name) ->
             showLocationOnMap(latLng, name)
             pendingLocationUpdate = null
         }
+    }
+
+    private fun loadPointsFromFirestore() {
+        lifecycleScope.launch {
+            firestore.collection("points")
+                .get()
+                .addOnSuccessListener { documents ->
+                    clearAllMarkers()
+
+                    for (document in documents) {
+                        val location = document.getGeoPoint("location")
+                        val type = document.getString("type") ?: "unknown"
+                        val title = document.getString("title") ?: "Desperfecto"
+
+                        location?.let { geoPoint ->
+                            val latLng = LatLng(geoPoint.latitude, geoPoint.longitude)
+                            addMarkerToMap(latLng, title, type)
+                        }
+                    }
+                }
+                .addOnFailureListener { e ->
+                    showError("Error al cargar puntos: ${e.localizedMessage}")
+                }
+        }
+    }
+
+    private fun addMarkerToMap(latLng: LatLng, title: String, type: String) {
+        val markerColor = when (type.toLowerCase()) {
+            "peligroso" -> BitmapDescriptorFactory.HUE_RED
+            "seguro" -> BitmapDescriptorFactory.HUE_GREEN
+            "advertencia" -> BitmapDescriptorFactory.HUE_ORANGE
+            else -> BitmapDescriptorFactory.HUE_BLUE
+        }
+
+        val marker = mMap.addMarker(
+            MarkerOptions()
+                .position(latLng)
+                .title(title)
+                .snippet("Tipo: $type")
+                .icon(BitmapDescriptorFactory.defaultMarker(markerColor))
+        )
+
+        marker?.let { markers.add(it) }
+    }
+
+    private fun clearAllMarkers() {
+        markers.forEach { it.remove() }
+        markers.clear()
     }
 
     private fun showError(message: String) {

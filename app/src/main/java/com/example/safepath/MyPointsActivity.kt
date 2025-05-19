@@ -16,7 +16,8 @@ class MyPointsActivity : AppCompatActivity() {
             MaterialTheme {
                 LocationCard(
                     latitude = 19.4326,  // Ejemplo: CDMX
-                    longitude = -99.1332
+                    longitude = -99.1332,
+                    type = "bache"
                 )
             }
         }
