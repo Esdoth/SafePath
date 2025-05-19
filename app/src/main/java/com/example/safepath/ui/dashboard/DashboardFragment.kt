@@ -5,15 +5,19 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.compose.ui.unit.dp
 import androidx.fragment.app.Fragment
+import androidx.navigation.findNavController
 import com.example.safepath.databinding.FragmentMisPuntosBinding
 import com.example.safepath.ui.componentes.LocationCard
+import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.GeoPoint
@@ -43,18 +47,19 @@ class DashboardFragment : Fragment() {
                 val currentUser = auth.currentUser
                 val userEmail = currentUser?.email ?: ""
 
-                // Observador de Firestore filtrado por usuario
-                LaunchedEffect(userEmail) {
+                // Función para recargar los puntos
+                fun loadPoints() {
                     if (userEmail.isNotEmpty()) {
                         db.collection("points")
-                            .whereEqualTo("user", userEmail) // Filtra por el email del usuario
+                            .whereEqualTo("user", userEmail)
                             .get()
                             .addOnSuccessListener { documents ->
                                 val mappedPoints = documents.map { doc ->
                                     PointData(
+                                        id = doc.id,
                                         location = doc.getGeoPoint("location") ?: GeoPoint(0.0, 0.0),
                                         type = doc.getString("type") ?: "Desconocido",
-                                        user = doc.getString("user") ?: ""
+                                        user = doc.getString("user") ?: userEmail
                                     )
                                 }
                                 points = mappedPoints
@@ -62,14 +67,34 @@ class DashboardFragment : Fragment() {
                     }
                 }
 
+                // Cargar puntos inicialmente
+                LaunchedEffect(userEmail) {
+                    loadPoints()
+                }
+
+                // Manejar eliminación de puntos
+                fun handleDeletePoint(pointId: String) {
+                    db.collection("points").document(pointId)
+                        .delete()
+                        .addOnSuccessListener {
+                            loadPoints() // Recargar la lista después de eliminar
+                            Snackbar.make(binding.root, "Punto eliminado", Snackbar.LENGTH_SHORT).show()
+                        }
+                        .addOnFailureListener { e ->
+                            Snackbar.make(binding.root, "Error al eliminar: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                        }
+                }
+
                 MaterialTheme {
                     if (userEmail.isEmpty()) {
-                        // Muestra un mensaje si no hay usuario autenticado
-                        Column {
+                        Column(Modifier.padding(16.dp)) {
                             Text("No hay usuario autenticado")
                         }
                     } else {
-                        PointsList(points = points)
+                        PointsList(
+                            points = points,
+                            onDeletePoint = { pointId -> handleDeletePoint(pointId) }
+                        )
                     }
                 }
             }
@@ -83,9 +108,12 @@ class DashboardFragment : Fragment() {
 }
 
 @Composable
-fun PointsList(points: List<PointData>) {
+fun PointsList(
+    points: List<PointData>,
+    onDeletePoint: (String) -> Unit
+) {
     if (points.isEmpty()) {
-        Column {
+        Column(Modifier.padding(16.dp)) {
             Text("No hay puntos registrados")
         }
     } else {
@@ -94,7 +122,9 @@ fun PointsList(points: List<PointData>) {
                 LocationCard(
                     latitude = point.location.latitude,
                     longitude = point.location.longitude,
-                    type = point.type
+                    type = point.type,
+                    pointId = point.id,
+                    onDeleteSuccess = { onDeletePoint(point.id) }
                 )
             }
         }
@@ -102,7 +132,8 @@ fun PointsList(points: List<PointData>) {
 }
 
 data class PointData(
+    val id: String,
     val location: GeoPoint,
     val type: String,
-    val user: String = ""
+    val user: String
 )
