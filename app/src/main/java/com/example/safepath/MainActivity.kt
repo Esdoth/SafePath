@@ -1,5 +1,6 @@
 package com.example.safepath
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.findNavController
@@ -9,13 +10,21 @@ import com.example.safepath.databinding.ActivityMainBinding
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import androidx.core.view.WindowCompat
 import android.content.res.Configuration
+import com.example.safepath.SessionManager
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
+    private lateinit var sessionManager: SessionManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        sessionManager = SessionManager(this)
+        if (!sessionManager.isLoggedIn()) {
+            redirectToLogin()
+            return
+        }
 
         // Configurar la barra de estado ANTES de setContentView
         setupStatusBarTheme()
@@ -79,5 +88,10 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         // Volver a aplicar la configuración por si cambió el tema mientras la app estaba en segundo plano
         setupStatusBarTheme()
+    }
+
+    private fun redirectToLogin() {
+        startActivity(Intent(this, LoginActivity::class.java))
+        finish()
     }
 }
