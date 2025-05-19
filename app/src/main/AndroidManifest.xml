@@ -20,6 +20,7 @@
         <activity
             android:name="com.google.android.libraries.places.widget.AutocompleteActivity"
             android:theme="@style/Theme.SafePath.PlacesAutocomplete"
+            android:screenOrientation="portrait"
             android:exported="false"
             android:windowSoftInputMode="adjustResize"
             tools:replace="android:theme"/>
@@ -27,7 +28,8 @@
         <activity
             android:name=".LoginActivity"
             android:exported="true"
-            android:theme="@style/Theme.SafePath">
+            android:theme="@style/Theme.SafePath"
+            android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -47,12 +49,14 @@
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.SafePath"/>
+            android:theme="@style/Theme.SafePath"
+            android:screenOrientation="portrait"/>
 
         <activity
             android:name=".RegistroActivity"
             android:exported="true"
-            android:theme="@style/Theme.SafePath"/>
+            android:theme="@style/Theme.SafePath"
+            android:screenOrientation="portrait"/>
 
         <meta-data
             android:name="com.google.android.geo.API_KEY"
