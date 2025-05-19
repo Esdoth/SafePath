@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -13,6 +14,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
 import com.example.safepath.R
+import com.example.safepath.AddPointActivity
 import com.example.safepath.databinding.FragmentHomeBinding
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
@@ -88,6 +90,13 @@ class HomeFragment : Fragment(), OnMapReadyCallback {
         initializePlacesApi()
         setupMap()
         setupSearchField()
+
+        // Encontrar la referencia al botón y setear el OnClickListener
+        val buttonAddPoint = binding.root.findViewById<Button>(R.id.buttonAddPointActivity)
+        val intent = Intent(requireContext(), AddPointActivity::class.java)
+        buttonAddPoint.setOnClickListener {
+            startActivity(intent)
+        }
     }
 
     private fun initializePlacesApi() {

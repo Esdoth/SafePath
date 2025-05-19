@@ -39,4 +39,19 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"/>
 
+    <Button
+        android:id="@+id/buttonAddPointActivity"
+        android:layout_width="63dp"
+        android:layout_height="67dp"
+        android:textAlignment="center"
+        app:icon="@drawable/outline_add"
+        app:iconGravity="textTop"
+        app:iconSize="36dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.902"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.796" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

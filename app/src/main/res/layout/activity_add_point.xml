@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <Button
+        android:id="@+id/buttonRegreso"
+        android:layout_width="61dp"
+        android:layout_height="63dp"
+        android:layout_marginTop="44dp"
+        android:textAlignment="center"
+        app:icon="@drawable/outline_arrow_back"
+        app:iconGravity="textTop"
+        app:iconPadding="0dp"
+        app:iconSize="24dp"
+        app:iconTintMode="src_atop"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.075"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/testViewtitleAddPoint"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="Agrega un punto"
+        android:textAlignment="center"
+        android:textSize="34sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.272"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/buttonRegreso" />
+
+    <TextView
+        android:id="@+id/textViewTitleDescAddPoint"
+        android:layout_width="317dp"
+        android:layout_height="49dp"
+        android:layout_marginTop="8dp"
+        android:text="Agrega un punto en el mapa para que los demás puedan ver el bache o desperfecto sobre la vía."
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.446"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/testViewtitleAddPoint" />
+
+    <TextView
+        android:id="@+id/textViewDescLayoutAddPoint"
+        android:layout_width="325dp"
+        android:layout_height="40dp"
+        android:layout_marginTop="28dp"
+        android:text="Selecciona un punto en el mapa o ingresa la dirección en la barra de busqueda"
+        android:textAlignment="center"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textViewTitleDescAddPoint" />
+
+    <Button
+        android:id="@+id/buttonAgregarPunto"
+        android:layout_width="308dp"
+        android:layout_height="45dp"
+        android:layout_marginBottom="72dp"
+        android:text="Agregar"
+        android:textAlignment="center"
+        android:textStyle="bold"
+        app:icon="@drawable/outline_add"
+        app:iconGravity="textStart"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.495"
+        app:layout_constraintStart_toStartOf="parent" />
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -16,7 +16,6 @@
         android:theme="@style/Theme.SafePath"
         tools:targetApi="31">
 
-        <!-- Actividad para Autocomplete de Places -->
         <activity
             android:name="com.google.android.libraries.places.widget.AutocompleteActivity"
             android:theme="@style/Theme.SafePath.PlacesAutocomplete"
@@ -54,6 +53,12 @@
 
         <activity
             android:name=".RegistroActivity"
+            android:exported="true"
+            android:theme="@style/Theme.SafePath"
+            android:screenOrientation="portrait"/>
+
+        <activity
+            android:name=".AddPointActivity"
             android:exported="true"
             android:theme="@style/Theme.SafePath"
             android:screenOrientation="portrait"/>
