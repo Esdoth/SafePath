@@ -14,6 +14,7 @@ import com.example.safepath.LoginActivity
 import com.example.safepath.databinding.FragmentCuentaBinding
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
+import androidx.core.content.edit
 
 class NotificationsFragment : Fragment() {
 
@@ -68,7 +69,7 @@ class NotificationsFragment : Fragment() {
     private fun cerrarSesion() {
         auth.signOut()
         val sharedPreferences = requireActivity().getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE)
-        sharedPreferences.edit().remove("authToken").apply()
+        sharedPreferences.edit { remove("authToken") }
         val intent = Intent(requireActivity(), LoginActivity::class.java)
         startActivity(intent)
         requireActivity().finish()
