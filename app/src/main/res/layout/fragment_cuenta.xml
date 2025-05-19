@@ -24,6 +24,7 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="208dp"
         android:text="Hola"
+        android:textAlignment="center"
         android:textAppearance="@style/TextAppearance.AppCompat.Large"
         app:layout_constraintBottom_toTopOf="@+id/buttonCerrarSesion"
         app:layout_constraintEnd_toEndOf="parent"
