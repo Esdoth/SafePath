@@ -1,38 +1,47 @@
 package com.example.safepath.ui.home
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Point
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.Toast
+import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
 import com.example.safepath.R
 import com.example.safepath.AddPointActivity
 import com.example.safepath.databinding.FragmentHomeBinding
+import com.google.android.gms.common.api.ApiException
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.libraries.places.api.Places
 import com.google.android.libraries.places.api.model.Place
+import com.google.android.libraries.places.api.net.PlacesClient
 import com.google.android.libraries.places.widget.Autocomplete
 import com.google.android.libraries.places.widget.AutocompleteActivity
 import com.google.android.libraries.places.widget.model.AutocompleteActivityMode
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.GeoPoint
-import com.google.android.gms.maps.model.Marker
-import com.google.android.gms.maps.model.BitmapDescriptorFactory
-import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
+import androidx.lifecycle.lifecycleScope
 
 class HomeFragment : Fragment(), OnMapReadyCallback {
 
@@ -41,11 +50,13 @@ class HomeFragment : Fragment(), OnMapReadyCallback {
 
     private lateinit var mMap: GoogleMap
     private var isMapReady = false
-    private lateinit var placesClient: com.google.android.libraries.places.api.net.PlacesClient
-    private var pendingLocationUpdate: Pair<LatLng, String?>? = null
+    private lateinit var placesClient: PlacesClient
     private var statusBarHeight = 0
     private val firestore = FirebaseFirestore.getInstance()
     private val markers = mutableListOf<Marker>()
+    private lateinit var fusedLocationProviderClient: FusedLocationProviderClient
+    private var userLocation: LatLng? = null
+    private var pendingLocationUpdate: Pair<LatLng, String?>? = null
 
     private val autocompleteLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -69,6 +80,21 @@ class HomeFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
+    private val locationPermissionLauncher: ActivityResultLauncher<String> =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            if (isGranted) {
+                obtenerUbicacionYCentrarMapa()
+            } else {
+                Toast.makeText(
+                    requireContext(),
+                    "Permiso de ubicación necesario para mostrar tu ubicación en el mapa.",
+                    Toast.LENGTH_LONG
+                ).show()
+                val defaultLocation = LatLng(20.704657028467377, -100.44353167532229)
+                showLocationOnMap(defaultLocation, "Ubicación por Defecto")
+            }
+        }
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -81,7 +107,6 @@ class HomeFragment : Fragment(), OnMapReadyCallback {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Obtener altura de la status bar
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
             statusBarHeight = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top
             insets
@@ -91,10 +116,18 @@ class HomeFragment : Fragment(), OnMapReadyCallback {
         setupMap()
         setupSearchField()
 
-        // Encontrar la referencia al botón y setear el OnClickListener
+        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(requireContext())
+        verificarPermisosUbicacion()
+
         val buttonAddPoint = binding.root.findViewById<Button>(R.id.buttonAddPointActivity)
-        val intent = Intent(requireContext(), AddPointActivity::class.java)
         buttonAddPoint.setOnClickListener {
+            // Crear el Intent y añadir la ubicación del usuario como extras
+            val intent = Intent(requireContext(), AddPointActivity::class.java).apply {
+                userLocation?.let { location ->
+                    putExtra("user_latitude", location.latitude)
+                    putExtra("user_longitude", location.longitude)
+                }
+            }
             startActivity(intent)
         }
     }
@@ -138,11 +171,10 @@ class HomeFragment : Fragment(), OnMapReadyCallback {
                 .setCountry("MX")
                 .build(requireContext())
 
-            // Añadir margen superior para evitar solapamiento
             intent.putExtra(
                 "android.provider.extra.INITIAL_INTENTS",
                 Intent().apply {
-                    putExtra("offset", Point(0, statusBarHeight + 50)) // Margen adicional de 50px
+                    putExtra("offset", Point(0, statusBarHeight + 50))
                 }
             )
 
@@ -182,15 +214,70 @@ class HomeFragment : Fragment(), OnMapReadyCallback {
         mMap = googleMap
         isMapReady = true
 
+        verificarPermisosUbicacion()
+
+        userLocation?.let {
+            showLocationOnMap(it, "Mi Ubicación")
+        }
+
         val defaultLocation = LatLng(20.704657028467377, -100.44353167532229)
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(defaultLocation, 12f))
 
-        // Cargar puntos de Firestore
         loadPointsFromFirestore()
 
         pendingLocationUpdate?.let { (latLng, name) ->
             showLocationOnMap(latLng, name)
             pendingLocationUpdate = null
+        }
+    }
+
+    private fun verificarPermisosUbicacion() {
+        if (ContextCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            obtenerUbicacionYCentrarMapa()
+        } else {
+            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+    }
+
+    private fun obtenerUbicacionYCentrarMapa() {
+        if (ActivityCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+
+        val locationTask = fusedLocationProviderClient.lastLocation
+        locationTask.addOnSuccessListener { location ->
+            if (location != null) {
+                userLocation = LatLng(location.latitude, location.longitude)
+                showLocationOnMap(userLocation!!, "Mi Ubicación")
+            } else {
+                Toast.makeText(
+                    requireContext(),
+                    "No se pudo obtener la ubicación. Mostrando ubicación por defecto.",
+                    Toast.LENGTH_LONG
+                ).show()
+                val defaultLocation = LatLng(20.704657028467377, -100.44353167532229)
+                showLocationOnMap(defaultLocation, "Ubicación por Defecto")
+            }
+        }
+
+        locationTask.addOnFailureListener { e ->
+            val errorMessage = when (e) {
+                is ApiException -> "Error de API: ${e.status.toString()}"
+                else -> "Error al obtener la ubicación: ${e.localizedMessage}"
+            }
+            Log.e("Location", errorMessage)
+            Toast.makeText(requireContext(), errorMessage, Toast.LENGTH_LONG).show()
+
+            val defaultLocation = LatLng(20.704657028467377, -100.44353167532229)
+            showLocationOnMap(defaultLocation, "Ubicación por Defecto")
         }
     }
 
@@ -202,12 +289,12 @@ class HomeFragment : Fragment(), OnMapReadyCallback {
                     clearAllMarkers()
 
                     for (document in documents) {
-                        val location = document.getGeoPoint("location")
+                        val geoPoint = document.get("location") as? com.google.firebase.firestore.GeoPoint
                         val type = document.getString("type") ?: "unknown"
                         val title = document.getString("title") ?: "Desperfecto"
 
-                        location?.let { geoPoint ->
-                            val latLng = LatLng(geoPoint.latitude, geoPoint.longitude)
+                        geoPoint?.let {
+                            val latLng = LatLng(it.latitude, it.longitude)
                             addMarkerToMap(latLng, title, type)
                         }
                     }

@@ -14,6 +14,7 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.libraries.places.api.Places
@@ -35,9 +36,10 @@ class AddPointActivity : AppCompatActivity(), OnMapReadyCallback {
     private lateinit var placesClient: com.google.android.libraries.places.api.net.PlacesClient
     private var selectedLatLng: LatLng? = null
     private var statusBarHeight = 0
-    private lateinit var mMap: GoogleMap // Google Map object
+    private lateinit var mMap: GoogleMap
     private var isMapReady = false
     private var pendingLocationUpdate: LatLng? = null
+    private var userLocation: LatLng? = null // Nueva propiedad para la ubicación del usuario
 
     private val autocompleteLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -63,6 +65,17 @@ class AddPointActivity : AppCompatActivity(), OnMapReadyCallback {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_add_point)
+
+        // Obtener la ubicación del usuario del Intent
+        userLocation = intent.extras?.let {
+            val latitude = it.getDouble("user_latitude", 0.0)
+            val longitude = it.getDouble("user_longitude", 0.0)
+            if (latitude != 0.0 && longitude != 0.0) {
+                LatLng(latitude, longitude)
+            } else {
+                null
+            }
+        }
 
         // Initialize Firestore
         firestore = FirebaseFirestore.getInstance()
@@ -145,18 +158,35 @@ class AddPointActivity : AppCompatActivity(), OnMapReadyCallback {
         selectedLatLng = place.latLng
         editTextSearchAddPoint.setText(place.name ?: place.address)
 
-        // Update the map if it's ready
         if (isMapReady) {
             showLocationOnMap(selectedLatLng)
         } else {
-            pendingLocationUpdate = selectedLatLng;
+            pendingLocationUpdate = selectedLatLng
         }
     }
 
     private fun showLocationOnMap(latLng: LatLng?) {
         latLng?.let {
-            mMap.clear()
-            mMap.addMarker(MarkerOptions().position(it).title("Ubicación Seleccionada"))
+            // Limpiar todos los marcadores excepto "Mi Ubicación"
+            mMap.clear() // Primero limpiamos todos los marcadores
+
+            // Volvemos a agregar el marcador de "Mi Ubicación" si existe
+            userLocation?.let { userLoc ->
+                mMap.addMarker(
+                    MarkerOptions()
+                        .position(userLoc)
+                        .title("Mi Ubicación")
+                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE))
+                )
+            }
+
+            // Agregar el nuevo marcador de ubicación seleccionada
+            mMap.addMarker(
+                MarkerOptions()
+                    .position(it)
+                    .title("Ubicación Seleccionada")
+                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
+            )
             mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(it, 15f))
         }
     }
@@ -165,11 +195,21 @@ class AddPointActivity : AppCompatActivity(), OnMapReadyCallback {
         mMap = googleMap
         isMapReady = true
 
-        //show initial location
-        val defaultLocation = LatLng(20.704657028467377, -100.44353167532229)
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(defaultLocation, 12f))
+        // Mostrar ubicación del usuario si está disponible, de lo contrario mostrar ubicación por defecto
+        val initialLocation = userLocation ?: LatLng(20.704657028467377, -100.44353167532229)
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(initialLocation, 12f))
 
-        if(pendingLocationUpdate != null){
+        // Mostrar marcador de ubicación del usuario si está disponible
+        userLocation?.let {
+            mMap.addMarker(
+                MarkerOptions()
+                    .position(it)
+                    .title("Mi Ubicación")
+                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE))
+            )
+        }
+
+        if (pendingLocationUpdate != null) {
             showLocationOnMap(pendingLocationUpdate)
             pendingLocationUpdate = null
         }
