@@ -2,6 +2,7 @@ package com.example.safepath
 
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.View
 import android.widget.TextView // Import necesario para TextView
@@ -20,8 +21,8 @@ import com.google.firebase.ktx.Firebase
 class LoginActivity : AppCompatActivity() {
 
     private lateinit var auth: FirebaseAuth
-
     private lateinit var binding: ActivityLoginBinding
+    private lateinit var sharedPreferences: SharedPreferences
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -29,90 +30,87 @@ class LoginActivity : AppCompatActivity() {
         binding = ActivityLoginBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Inicializa Firebase Auth
+        // Inicializaciones
         auth = Firebase.auth
+        sharedPreferences = getSharedPreferences("SafePathPrefs", Context.MODE_PRIVATE)
 
+        // Verificar sesión existente
+        if (isUserLoggedIn()) {
+            navigateToMainActivity()
+            return
+        }
+
+        setupWindowInsets()
+        setupClickListeners()
+    }
+
+    private fun isUserLoggedIn(): Boolean {
+        // Verificar tanto en Firebase como en preferencias
+        return auth.currentUser != null && sharedPreferences.getBoolean("isLoggedIn", false)
+    }
+
+    private fun setupWindowInsets() {
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
+    }
 
-        // Verificar si el usuario ya ha iniciado sesión (comentado para forzar login)
-        /*
-        val sharedPreferences = getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE)
-        val authToken = sharedPreferences.getString("authToken", null)
-
-        if (authToken != null) {
-            val intent = Intent(this, MainActivity::class.java)
-            startActivity(intent)
-            finish()
-            return
-        }
-        */
-
+    private fun setupClickListeners() {
         binding.buttonLogin.setOnClickListener {
-            val email = binding.editTextEmailAddress.text.toString()
-            val password = binding.editTextPassword.text.toString()
+            val email = binding.editTextEmailAddress.text.toString().trim()
+            val password = binding.editTextPassword.text.toString().trim()
             attemptLogin(email, password)
         }
 
-        // Hacer el TextView de registro clickable
-        binding.textViewRegistro.isClickable = true
         binding.textViewRegistro.setOnClickListener {
-            // Crear un Intent para iniciar la actividad de registro
-            val intent = Intent(this, RegistroActivity::class.java)
-            startActivity(intent)
+            startActivity(Intent(this, RegistroActivity::class.java))
         }
     }
 
     private fun attemptLogin(email: String, password: String) {
-        // Validación básica de campos
         if (email.isEmpty() || password.isEmpty()) {
             Toast.makeText(this, "Por favor ingresa email y contraseña", Toast.LENGTH_SHORT).show()
             return
         }
 
-        // Obtener instancia de Firebase Auth
-        val auth = Firebase.auth
-
-        // Mostrar progreso (si tienes un ProgressBar en tu layout con este ID)
-        binding.progressBar?.visibility = View.VISIBLE
+        binding.progressBar.visibility = View.VISIBLE
 
         auth.signInWithEmailAndPassword(email, password)
             .addOnCompleteListener(this) { task ->
-                // Ocultar progreso
-                binding.progressBar?.visibility = View.GONE
+                binding.progressBar.visibility = View.GONE
 
                 if (task.isSuccessful) {
-                    // Login exitoso
-                    val intent = Intent(this, MainActivity::class.java)
-                    startActivity(intent)
-                    finish() // Cierra la Activity de login
+                    onLoginSuccess()
                 } else {
-                    // Mostrar error
-                    val errorMessage = when {
-                        task.exception is FirebaseAuthInvalidUserException -> "Usuario no registrado"
-                        task.exception is FirebaseAuthInvalidCredentialsException -> "Credenciales incorrectas"
-                        else -> "Error al iniciar sesión: ${task.exception?.message}"
-                    }
-                    Toast.makeText(this, errorMessage, Toast.LENGTH_LONG).show()
+                    handleLoginError(task.exception)
                 }
             }
     }
 
-    private fun navigateToMainActivity() {
-        val intent = Intent(this, MainActivity::class.java)
-        startActivity(intent)
-        finish() // Cierra la Activity de login para que no se pueda volver atrás
-    }
-
-    private fun saveLoginState() {
-        val sharedPreferences = getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE)
-        with(sharedPreferences.edit()) {
+    private fun onLoginSuccess() {
+        // Guardar estado de login
+        sharedPreferences.edit().apply {
             putBoolean("isLoggedIn", true)
+            putString("userEmail", auth.currentUser?.email)
             apply()
         }
+
+        navigateToMainActivity()
     }
 
+    private fun handleLoginError(exception: Exception?) {
+        val errorMessage = when (exception) {
+            is FirebaseAuthInvalidUserException -> "Usuario no registrado"
+            is FirebaseAuthInvalidCredentialsException -> "Credenciales incorrectas"
+            else -> "Error al iniciar sesión: ${exception?.localizedMessage}"
+        }
+        Toast.makeText(this, errorMessage, Toast.LENGTH_LONG).show()
+    }
+
+    private fun navigateToMainActivity() {
+        startActivity(Intent(this, MainActivity::class.java))
+        finish()
+    }
 }
