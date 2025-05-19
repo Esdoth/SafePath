@@ -39,7 +39,7 @@
         android:id="@+id/textViewTitleDescAddPoint"
         android:layout_width="317dp"
         android:layout_height="49dp"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="4dp"
         android:text="Agrega un punto en el mapa para que los demás puedan ver el bache o desperfecto sobre la vía."
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.446"
@@ -50,12 +50,45 @@
         android:id="@+id/textViewDescLayoutAddPoint"
         android:layout_width="325dp"
         android:layout_height="40dp"
-        android:layout_marginTop="28dp"
+        android:layout_marginTop="12dp"
         android:text="Selecciona un punto en el mapa o ingresa la dirección en la barra de busqueda"
         android:textAlignment="center"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/textViewTitleDescAddPoint" />
+
+    <EditText
+        android:id="@+id/editTextSearchAddPoint"
+        android:layout_width="335dp"
+        android:layout_height="49dp"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/custom_input2"
+        android:clickable="true"
+        android:drawableStart="@drawable/ic_search"
+        android:drawablePadding="8dp"
+        android:focusable="false"
+        android:focusableInTouchMode="false"
+        android:hint="@string/search_hint"
+        android:inputType="none"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="12dp"
+        android:singleLine="true"
+        android:textColor="@color/text_hint"
+        android:textColorHint="@color/text_hint"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textViewDescLayoutAddPoint" />
+
+    <androidx.fragment.app.FragmentContainerView
+        android:id="@+id/map"
+        android:name="com.google.android.gms.maps.SupportMapFragment"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintTop_toBottomOf="@+id/editTextSearchAddPoint"  app:layout_constraintBottom_toTopOf="@+id/buttonAgregarPunto"    app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="8dp" />
 
     <Button
         android:id="@+id/buttonAgregarPunto"
@@ -71,4 +104,5 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.495"
         app:layout_constraintStart_toStartOf="parent" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>
