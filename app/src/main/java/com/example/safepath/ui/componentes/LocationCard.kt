@@ -12,7 +12,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun LocationCard(latitude: Double, longitude: Double) {
+fun LocationCard(latitude: Double, longitude: Double, type: String) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -47,22 +47,35 @@ fun LocationCard(latitude: Double, longitude: Double) {
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "Longitud:",
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = "%.4f".format(longitude),
-                    color = Color.Gray
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Longitud:",
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "%.4f".format(longitude),
+                        color = Color.Gray
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ){
+                    Text(
+                        text = "Tipo:",
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = type,
+                        color = Color.Gray
+                    )
+                }
             }
         }
     }
-}
 
 // Ejemplo de uso:
 @Preview
@@ -70,6 +83,7 @@ fun LocationCard(latitude: Double, longitude: Double) {
 fun PreviewLocationCard() {
     LocationCard(
         latitude = 40.7128,
-        longitude = -74.0060
+        longitude = -74.0060,
+        type= "bache"
     )
 }
