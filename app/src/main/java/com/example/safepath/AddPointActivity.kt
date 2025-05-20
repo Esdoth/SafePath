@@ -23,8 +23,11 @@ import com.google.android.libraries.places.widget.Autocomplete
 import com.google.android.libraries.places.widget.AutocompleteActivity
 import com.google.android.libraries.places.widget.model.AutocompleteActivityMode
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.auth.FirebaseAuth
 
 class AddPointActivity : AppCompatActivity(), OnMapReadyCallback {
+
+    private lateinit var auth: FirebaseAuth
 
     private lateinit var buttonRegreso: Button
     private lateinit var testViewtitleAddPoint: TextView
@@ -65,6 +68,11 @@ class AddPointActivity : AppCompatActivity(), OnMapReadyCallback {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_add_point)
+        auth = FirebaseAuth.getInstance()
+
+        // Obtener el usuario actual
+        val currentUser = auth.currentUser
+        var userEmail = currentUser?.email ?: "anonymous"
 
         // Obtener la ubicación del usuario del Intent
         userLocation = intent.extras?.let {
@@ -106,7 +114,7 @@ class AddPointActivity : AppCompatActivity(), OnMapReadyCallback {
 
         // Configure OnClickListener for the Agregar button
         buttonAgregarPunto.setOnClickListener {
-            guardarPuntoEnFirestore()
+            guardarPuntoEnFirestore(userEmail)
         }
 
         // Configure OnClickListener for the back button
@@ -215,7 +223,7 @@ class AddPointActivity : AppCompatActivity(), OnMapReadyCallback {
         }
     }
 
-    private fun guardarPuntoEnFirestore() {
+    private fun guardarPuntoEnFirestore(userEmail: String) {
         val title = "Título de prueba" // etTitle.text.toString().trim()
         val description = "Descripción de prueba" // etDescription.text.toString().trim()
 
@@ -237,7 +245,8 @@ class AddPointActivity : AppCompatActivity(), OnMapReadyCallback {
                 selectedLatLng!!.latitude,
                 selectedLatLng!!.longitude
             ),
-            "type" to "peligroso"
+            "type" to "peligroso",
+            "user" to userEmail,
         )
 
         // Add the point to the "points" collection in Firestore
